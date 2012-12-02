@@ -39,7 +39,7 @@ namespace wp7_latm_mediastreamsource
             RtspMessages = new RtspCommands(RtspUrl);
             RtspSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             RtspEvntArgs = new SocketAsyncEventArgs();
-            RtpStream = new Rtp();
+            RtpStream = Rtp.GetInstance();
             RtspEvntArgs.RemoteEndPoint = new DnsEndPoint(RtspUri.Host, RtspPort);
             RtspEvntArgs.Completed += RtspEvntArgs_Completed;
             RtspEvntArgs.SetBuffer(0, MaxBufferSize);
@@ -59,6 +59,8 @@ namespace wp7_latm_mediastreamsource
                     break;
                 case SocketAsyncOperation.Receive:
                     string message = Encoding.UTF8.GetString(e.Buffer, 0, e.BytesTransferred);
+                    Logging.Log(CurrentState.ToString());
+                    Logging.Log(message);
                     Match m;
                     switch (CurrentState)
                     {
@@ -131,6 +133,7 @@ namespace wp7_latm_mediastreamsource
         {
             SendMessage(RtspMessages.Teardown());
             CurrentState = State.Teardown;
+            RtpStream.Abort();
         }
 
         public void Dispose()

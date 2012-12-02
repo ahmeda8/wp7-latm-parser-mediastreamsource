@@ -5,6 +5,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
+using System.Diagnostics;
 
 namespace wp7_latm_mediastreamsource
 {
@@ -16,10 +17,14 @@ namespace wp7_latm_mediastreamsource
         public string ServerIP {get;set;}
         public int ClientPort { get; set; }
         public MemoryStream RtpStream;
+        private bool PortDetermined = false;
 
         private const string PortDetermineServerAddress = "169.254.96.50";
         private const int PortDetermineServerPort = 22222;
         private const int MaxBufferSize = 1024;
+        private int CurrentPacketSize;
+
+        private static Rtp instance;
 
         private enum RtpState
         {
@@ -28,6 +33,13 @@ namespace wp7_latm_mediastreamsource
         }
 
         private RtpState CurrentState;
+
+        public static Rtp GetInstance()
+        {
+            if (instance == null)
+                instance = new Rtp();
+            return instance;
+        }
 
         public Rtp()
         {
@@ -49,13 +61,24 @@ namespace wp7_latm_mediastreamsource
                         case RtpState.DeterminePort:
                             string message = Encoding.UTF8.GetString(e.Buffer, 0, e.BytesTransferred);
                             ClientPort = int.Parse(message);
+                            PortDetermined = true;
                             break;
                         case RtpState.Stream:
-                            RtpStream.Write(e.Buffer, 11, e.BytesTransferred - 12);
-                            //RtpParser.RTP_HEADER h =  RtpParser.GetHeader(e.Buffer);
-                            Receive();
+                            if (CurrentPacketSize == 0)
+                                CurrentPacketSize = e.BytesTransferred;
+                            if(e.BytesTransferred>12) //minimum bytes to accept from rtp packet
+                                RtpStream.Write(e.Buffer, 12 , e.BytesTransferred - 12);
+                            RtpParser.RTP_HEADER h =  RtpParser.GetHeader(e.Buffer);
+                            if (e.BytesTransferred < CurrentPacketSize)
+                            {
+                                Logging.Log(string.Format("Download Complete {0)",RtpStream.Length));
+                            }
+                            else
+                            {
+                                Logging.Log(string.Format("Continue Downloading , stream size={0} , seqno={1}, ssrc={2}, payload type={3},packet_size={4}",RtpStream.Length,h.seq,h.ssrc,h.pt,e.BytesTransferred));
+                                Receive();
+                            }
                             break;
-
                     }
                     break;
             }
@@ -63,11 +86,14 @@ namespace wp7_latm_mediastreamsource
 
         public void DeterminePort()
         {
+            if (PortDetermined)
+                return;
             RtpEvntArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Parse(PortDetermineServerAddress), PortDetermineServerPort);
             var send_buffer = Encoding.UTF8.GetBytes("Connect;LoopBack;");
             RtpEvntArgs.SetBuffer(send_buffer, 0, send_buffer.Length);
             CurrentState = RtpState.DeterminePort;
             RtpSocket.SendToAsync(RtpEvntArgs);
+
         }
 
         public void StartStream()
@@ -75,13 +101,28 @@ namespace wp7_latm_mediastreamsource
             RtpStream = new MemoryStream();
             RtpEvntArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Parse(ServerIP), ServerPort);
             CurrentState = RtpState.Stream;
+            CurrentPacketSize = 0;
             Receive();
         }
 
         private void Receive()
         {
-            RtpEvntArgs.SetBuffer(new byte[MaxBufferSize], 0, MaxBufferSize);
-            RtpSocket.ReceiveFromAsync(RtpEvntArgs);
+
+            try
+            {
+                RtpEvntArgs.SetBuffer(new byte[MaxBufferSize], 0, MaxBufferSize);
+                RtpSocket.ReceiveFromAsync(RtpEvntArgs);
+            }
+            catch (ObjectDisposedException)
+            {
+                Logging.Log("Socket Disposed.");
+            }
+        }
+
+        public void Abort()
+        {
+            RtpSocket.Close();
+            PortDetermined = false;
         }
 
     }
