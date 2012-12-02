@@ -15,6 +15,7 @@ namespace wp7_latm_mediastreamsource
         private string RtspUrl;
         private Uri RtspUri;
         private RtspCommands RtspMessages;
+        private Rtp RtpStream;
 
         private const int RtspPort = 554;
         private const int MaxBufferSize = 4096;
@@ -38,10 +39,11 @@ namespace wp7_latm_mediastreamsource
             RtspMessages = new RtspCommands(RtspUrl);
             RtspSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             RtspEvntArgs = new SocketAsyncEventArgs();
+            RtpStream = new Rtp();
             RtspEvntArgs.RemoteEndPoint = new DnsEndPoint(RtspUri.Host, RtspPort);
             RtspEvntArgs.Completed += RtspEvntArgs_Completed;
             RtspEvntArgs.SetBuffer(0, MaxBufferSize);
-            
+            RtpStream.DeterminePort();
         }
 
         void RtspEvntArgs_Completed(object sender, SocketAsyncEventArgs e)
@@ -68,13 +70,14 @@ namespace wp7_latm_mediastreamsource
                             m = Regex.Match(message, RangePattern);
                             RtspMessages.Range = m.Value.Substring(8, m.Length-11);
                             RtspMessages.Stream = "trackID=1";
-                            SendMessage(RtspMessages.Setup(10000));
+                            SendMessage(RtspMessages.Setup(RtpStream.ClientPort));
                             CurrentState = State.Setup;
                             break;
                         case State.Setup:
                             string SessionPattern = "Session:[^;]+;";
                             string SsrcPattern = "ssrc=(.*)" + Regex.Escape(Environment.NewLine);
                             string ServerPortPattern = "server_port=[^;]+;";
+                            string ServerIpPattern = "source=[^;]+;";
                             m = Regex.Match(message, SessionPattern);
                             RtspMessages.Session = m.Value.Substring(9,8);
                             m = Regex.Match(message, SsrcPattern);
@@ -82,10 +85,14 @@ namespace wp7_latm_mediastreamsource
                             m = Regex.Match(message, ServerPortPattern);
                             RtspMessages.ServerPortRtsp = int.Parse(m.Value.Substring(12,5));
                             RtspMessages.ServerPortRtcp = int.Parse(m.Value.Substring(18,5));
+                            RtpStream.ServerPort = RtspMessages.ServerPortRtsp;
+                            m = Regex.Match(message, ServerIpPattern);
+                            RtpStream.ServerIP = m.Value.Substring(7, m.Length - 8);
                             SendMessage(RtspMessages.Play());
                             CurrentState = State.Play;
                             break;
                         case State.Play:
+                            RtpStream.StartStream();
                             string RtpSeqPattern = "seq=[^;]+;";
                             string RtpTimePattern = "rtptime=(.*)"+Regex.Escape(Environment.NewLine);
                             m = Regex.Match(message, RtpSeqPattern);

@@ -51,8 +51,11 @@
   <ItemGroup>
     <Compile Include="aac.cs" />
     <Compile Include="aacdec.cs" />
+    <Compile Include="Parsers\BitMasks.cs" />
+    <Compile Include="Parsers\RtpParser.cs" />
     <Compile Include="Parsers\RtspCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Rtp.cs" />
     <Compile Include="Rtsp.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.$(TargetFrameworkProfile).Overrides.targets" />
