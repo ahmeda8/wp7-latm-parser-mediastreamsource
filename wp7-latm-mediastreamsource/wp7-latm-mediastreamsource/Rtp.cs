@@ -19,12 +19,13 @@ namespace wp7_latm_mediastreamsource
         public MemoryStream RtpStream;
         private bool PortDetermined = false;
 
-        private const string PortDetermineServerAddress = "169.254.96.50";
+        private const string PortDetermineServerAddress = "172.16.113.1";
         private const int PortDetermineServerPort = 22222;
         private const int MaxBufferSize = 1024;
         private int CurrentPacketSize;
 
         private static Rtp instance;
+        private AsyncCallback acb;
 
         private enum RtpState
         {
@@ -62,6 +63,7 @@ namespace wp7_latm_mediastreamsource
                             string message = Encoding.UTF8.GetString(e.Buffer, 0, e.BytesTransferred);
                             ClientPort = int.Parse(message);
                             PortDetermined = true;
+                            acb.Invoke(new DPIAsyncResult(ClientPort));
                             break;
                         case RtpState.Stream:
                             if (CurrentPacketSize == 0)
@@ -84,15 +86,24 @@ namespace wp7_latm_mediastreamsource
             }
         }
 
-        public void DeterminePort()
+        public void DeterminePort(AsyncCallback callback)
         {
             if (PortDetermined)
                 return;
+            acb = new AsyncCallback(callback);
             RtpEvntArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Parse(PortDetermineServerAddress), PortDetermineServerPort);
             var send_buffer = Encoding.UTF8.GetBytes("Connect;LoopBack;");
             RtpEvntArgs.SetBuffer(send_buffer, 0, send_buffer.Length);
             CurrentState = RtpState.DeterminePort;
-            RtpSocket.SendToAsync(RtpEvntArgs);
+            try
+            {
+                RtpSocket.SendToAsync(RtpEvntArgs);
+            }
+            catch (ObjectDisposedException e)
+            {
+                RtpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                RtpSocket.SendToAsync(RtpEvntArgs);
+            }
 
         }
 

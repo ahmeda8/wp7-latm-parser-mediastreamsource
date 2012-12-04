@@ -43,7 +43,14 @@ namespace wp7_latm_mediastreamsource
             RtspEvntArgs.RemoteEndPoint = new DnsEndPoint(RtspUri.Host, RtspPort);
             RtspEvntArgs.Completed += RtspEvntArgs_Completed;
             RtspEvntArgs.SetBuffer(0, MaxBufferSize);
-            RtpStream.DeterminePort();
+            //RtpStream.DeterminePort(new AsyncCallback(CB));
+        }
+
+        private void CB(IAsyncResult ar)
+        {
+            System.Diagnostics.Debug.WriteLine((int)(ar.AsyncState));
+            CurrentState = State.Connect;
+            RtspSocket.ConnectAsync(RtspEvntArgs);
         }
 
         void RtspEvntArgs_Completed(object sender, SocketAsyncEventArgs e)
@@ -125,8 +132,9 @@ namespace wp7_latm_mediastreamsource
 
         public void Play()
         {
-            CurrentState = State.Connect;
-            RtspSocket.ConnectAsync(RtspEvntArgs);
+            //CurrentState = State.Connect;
+            //RtspSocket.ConnectAsync(RtspEvntArgs);
+            RtpStream.DeterminePort(new AsyncCallback(CB));
         }
 
         public void Teardown()
