@@ -99,7 +99,7 @@ namespace wp7_latm_mediastreamsource
             {
                 RtpSocket.SendToAsync(RtpEvntArgs);
             }
-            catch (ObjectDisposedException e)
+            catch (ObjectDisposedException)
             {
                 RtpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 RtpSocket.SendToAsync(RtpEvntArgs);
