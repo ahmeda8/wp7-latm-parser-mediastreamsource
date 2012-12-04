@@ -22,6 +22,7 @@ namespace wp7_latm_mediastreamsource
 
         private enum State
         {
+            Init,
             Connect,
             Setup,
             Describe,
@@ -43,6 +44,7 @@ namespace wp7_latm_mediastreamsource
             RtspEvntArgs.RemoteEndPoint = new DnsEndPoint(RtspUri.Host, RtspPort);
             RtspEvntArgs.Completed += RtspEvntArgs_Completed;
             RtspEvntArgs.SetBuffer(0, MaxBufferSize);
+            CurrentState = State.Init;
             //RtpStream.DeterminePort(new AsyncCallback(CB));
         }
 
@@ -132,16 +134,21 @@ namespace wp7_latm_mediastreamsource
 
         public void Play()
         {
-            CurrentState = State.Connect;
-            //RtspSocket.ConnectAsync(RtspEvntArgs);
-            RtpStream.DeterminePort(new AsyncCallback(PlayAsyncCallback));
+            if (CurrentState == State.Init || CurrentState == State.Teardown)
+            {
+                CurrentState = State.Connect;
+                RtpStream.DeterminePort(new AsyncCallback(PlayAsyncCallback));
+            }
         }
 
         public void Teardown()
         {
-            SendMessage(RtspMessages.Teardown());
-            CurrentState = State.Teardown;
-            RtpStream.Abort();
+            if (CurrentState != State.Teardown)
+            {
+                SendMessage(RtspMessages.Teardown());
+                CurrentState = State.Teardown;
+                RtpStream.Abort();
+            }
         }
 
         public void Dispose()
