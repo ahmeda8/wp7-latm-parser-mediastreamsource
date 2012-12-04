@@ -46,9 +46,9 @@ namespace wp7_latm_mediastreamsource
             //RtpStream.DeterminePort(new AsyncCallback(CB));
         }
 
-        private void CB(IAsyncResult ar)
+        private void PlayAsyncCallback(IAsyncResult ar)
         {
-            System.Diagnostics.Debug.WriteLine((int)(ar.AsyncState));
+            Logging.Log((ar.AsyncState).ToString());
             CurrentState = State.Connect;
             RtspSocket.ConnectAsync(RtspEvntArgs);
         }
@@ -132,9 +132,9 @@ namespace wp7_latm_mediastreamsource
 
         public void Play()
         {
-            //CurrentState = State.Connect;
+            CurrentState = State.Connect;
             //RtspSocket.ConnectAsync(RtspEvntArgs);
-            RtpStream.DeterminePort(new AsyncCallback(CB));
+            RtpStream.DeterminePort(new AsyncCallback(PlayAsyncCallback));
         }
 
         public void Teardown()
