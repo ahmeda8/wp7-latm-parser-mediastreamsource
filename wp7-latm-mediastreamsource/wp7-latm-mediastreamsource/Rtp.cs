@@ -19,9 +19,10 @@ namespace wp7_latm_mediastreamsource
         public MemoryStream RtpStream;
         private bool PortDetermined = false;
 
-        private const string PortDetermineServerAddress = "172.16.113.1";
+        private const string PortDetermineServerAddress = "169.254.134.224";
         private const int PortDetermineServerPort = 22222;
         private const int MaxBufferSize = 1024;
+        private const int RtpPacketHeaderSize = 12;
         private int CurrentPacketSize;
 
         private static Rtp instance;
@@ -68,12 +69,12 @@ namespace wp7_latm_mediastreamsource
                         case RtpState.Stream:
                             if (CurrentPacketSize == 0)
                                 CurrentPacketSize = e.BytesTransferred;
-                            if(e.BytesTransferred>12) //minimum bytes to accept from rtp packet
-                                RtpStream.Write(e.Buffer, 12 , e.BytesTransferred - 12);
+                            if(e.BytesTransferred > RtpPacketHeaderSize) //minimum bytes to accept from rtp packet
+                                RtpStream.Write(e.Buffer, RtpPacketHeaderSize , e.BytesTransferred - RtpPacketHeaderSize);
                             RtpParser.RTP_HEADER h =  RtpParser.GetHeader(e.Buffer);
                             if (e.BytesTransferred < CurrentPacketSize)
                             {
-                                Logging.Log(string.Format("Download Complete {0)",RtpStream.Length));
+                                Logging.Log(string.Format("Download Complete {0}",RtpStream.Length));
                             }
                             else
                             {
