@@ -113,6 +113,7 @@ namespace wp7_latm_mediastreamsource
                             
                             break;
                         case State.Teardown:
+                            RtpStream.Abort();
                             break;
                     }
                     break;
@@ -147,7 +148,6 @@ namespace wp7_latm_mediastreamsource
             {
                 SendMessage(RtspMessages.Teardown());
                 CurrentState = State.Teardown;
-                RtpStream.Abort();
             }
         }
 
